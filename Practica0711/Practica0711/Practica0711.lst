@@ -1,0 +1,488 @@
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Page 1 - 1
+
+
+				; Instrucciones de ciclo: LOOP
+				; LOOP, LOOPE, LOOPNE -> E = EQUAL NE= NOT EQUAL
+
+				; E.P.L.E que lea desde teclado 10 numeros enteros y los almacene en un vector. El programa debe de determinar cuantos números son pares y cuantos son impares. Mostrar resultado en pantalla
+				; Nota: No dividir entre 2 para determinar si el número es par o impar.
+				; Se hace con la conversión en binario del número. Se utilizará la instrucción TEST ya que esta no guarda nada, a diferencia del
+
+				TITLE	Programa para evaluar numeros pares o impares dentro de un ciclo
+								PAGE	60, 132
+
+								.586
+								.MODEL	FLAT, STDCALL
+
+				Include	<Macros.inc>
+			      C ; Macros.inc
+			      C ; Contiene las macros para convertir enteros a cadena y viceversa
+			      C 
+			      C ; MacroEnteroACadena
+			      C ; Esta macro convierte un entero de 32 bits con signo
+			      C ; en su representación en cadena para su impresión posterior
+			      C ; usando la función WriteConsoleA
+			      C 
+			      C 
+			      C MacroEnteroACadena	MACRO	Numero, Cadena, Contador
+			      C LOCAL	Inicio
+			      C LOCAL	Repetir
+			      C LOCAL	Sacar
+			      C 			PUSHAD				; Salvar todos los registros
+			      C 			LEA	ESI, Cadena
+			      C 			MOV	BYTE PTR [ESI], ' '	; Positivo, no lleva signo
+			      C 			MOV	EAX, Numero
+			      C 			TEST	EAX, 80000000H
+			      C 			JZ	Inicio
+			      C 			; Numero negativo
+			      C 			; Poner signo e invertir
+			      C 			MOV	BYTE PTR [ESI], '-'
+			      C 			NEG	EAX
+			      C 
+			      C Inicio:
+			      C 			INC	ESI			; Siguiente posición después del signo
+			      C 			MOV	ECX, 0			; Contador de caracteres
+			      C 			MOV	EBX, 10			; Dividir entre 10
+			      C 
+			      C Repetir:
+			      C 			INC	ECX
+			      C 			CDQ				; EDX:EAX <- EAX
+			      C 			DIV	EBX
+			      C 			PUSH	EDX			; Residuo en la pila
+			      C 			CMP	EAX, 0			; ¿Seguir dividiendo?
+			      C 			JNE	Repetir
+			      C 
+			      C 			; ECX tiene el total de caracteres
+			      C 			MOV	Contador, ECX
+			      C 			INC	Contador		; Por el signo
+			      C 
+			      C 			; Sacar los residuos de la pila y convertirlos en caracteres
+			      C Sacar:
+			      C 			POP	EDX
+			      C 			OR	DL, 30H			; Convertir caractera a ASCII
+			      C 			MOV	[ESI], DL
+			      C 			INC	ESI
+			      C 			LOOP	Sacar
+			      C 
+			      C 			; Fin. Cadena tiene el número y Contador el total de caracteres
+			      C 			POPAD				; Recuperar todos los registros
+			      C 			ENDM
+			      C 
+			      C 
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Page 2 - 1
+
+
+			      C MacroCadenaAEntero	MACRO	Cadena, Numero
+			      C LOCAL Saltar
+			      C LOCAL SiguienteEspacio
+			      C LOCAL VerificarSigno
+			      C LOCAL Empezar
+			      C LOCAL Terminar
+			      C LOCAL Salir
+			      C 			PUSHAD
+			      C 
+			      C 			LEA	ESI, Cadena
+			      C 			MOV	EAX, 0
+			      C 			MOV	EBX, 10
+			      C 			MOV	EDI, 0			; Positivo
+			      C 
+			      C 			;Saltar blancos y tabuladores
+			      C Saltar:
+			      C 			CMP	BYTE PTR [ESI], 32	; Espacio en blanco
+			      C 			JE	SiguienteEspacio
+			      C 			CMP	BYTE PTR [ESI], 9	; Tabulador
+			      C 			JNE	VerificarSigno
+			      C SiguienteEspacio:
+			      C 			INC	ESI
+			      C 			JMP	Saltar
+			      C 
+			      C 			;El signo solo puede ser el primer caracter
+			      C VerificarSigno:
+			      C 			CMP	BYTE PTR [ESI], '-'
+			      C 			JNE	Empezar
+			      C 			MOV	EDI, 1			; Negativo
+			      C 			INC	ESI
+			      C 
+			      C 			; Convertir dígitos a números
+			      C 			; Salir cuando no sea dígito
+			      C Empezar:
+			      C 			CMP	BYTE PTR [ESI], '0'
+			      C 			JB	Terminar		; Si es menor que 0
+			      C 			CMP	BYTE PTR [ESI], '9'
+			      C 			JA	Terminar		; Si es mayor que 0
+			      C 			MUL	EBX
+			      C 			MOV	DL, [ESI]
+			      C 			AND	EDX, 0000000FH		; Convertir dígito a número
+			      C 			ADD	EAX, EDX
+			      C 			INC	ESI
+			      C 			JMP	Empezar
+			      C 
+			      C 			; Si tenía signo, negar el número
+			      C Terminar:		CMP	EDI, 0
+			      C 			JE	Salir
+			      C 			NEG	EAX
+			      C 
+			      C 			; Dejarlo en número
+			      C Salir:			MOV	Numero, EAX
+			      C 			POPAD
+			      C 			ENDM
+			      C 
+
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Page 3 - 1
+
+
+				; Prototipos de llamadas a servicios del sistema operativo
+
+				GetStdHandle	PROTO	:DWORD
+				ReadConsoleA	PROTO	:DWORD,	:DWORD,	:DWORD,	:DWORD,	:DWORD
+				WriteConsoleA	PROTO	:DWORD,	:DWORD,	:DWORD,	:DWORD,	:DWORD
+				ExitProcess		PROTO	CodigoSalida:DWORD
+
+								.STACK
+ 00000000							.DATA
+ 00000000  0000000A [		Vector			DWORD	10 DUP(0)
+	    00000000
+	   ]
+ 00000028 00000000		A				DWORD	0
+ 0000002C 00000000		Pares			DWORD	0
+ 00000030 00000000		Impares			DWORD	0
+ 00000034 50 72 6F 70 6F	MenEnt01		BYTE	"Proporcione el numero entero "
+	   72 63 69 6F 6E
+	   65 20 65 6C 20
+	   6E 75 6D 65 72
+	   6F 20 65 6E 74
+	   65 72 6F 20
+ 00000051 = 0000001D		Long_ME01		EQU		$ - MenEnt01
+ 00000051 54 6F 74 61 6C	MenSal01		BYTE	"Total de pares es:   "
+	   20 64 65 20 70
+	   61 72 65 73 20
+	   65 73 3A 20 20
+	   20
+ 00000066 = 00000015		Long_MS01		EQU		$ - MenSal01
+ 00000066 54 6F 74 61 6C	MenSal02		BYTE	"Total de impares es:   "
+	   20 64 65 20 69
+	   6D 70 61 72 65
+	   73 20 65 73 3A
+	   20 20 20
+ 0000007D = 00000017		Long_MS02		EQU		$ - MenSal02
+
+				; Variables para las llamadas al sistema operativo
+ 0000007D 00000000		ManejadorE		DWORD	0
+ 00000081 00000000		ManejadorS		DWORD	0
+ 00000085 00000000		Caracteres		DWORD	0
+ 00000089  0000000D [		Texto			BYTE	13 DUP ( ' ' )
+	    20
+	   ]
+ 00000096 0D 0A			SaltoLinea		BYTE	13, 10
+ =-0000000A			STDIN			EQU		-10
+ =-0000000B			STDOUT			EQU		-11
+
+ 00000000							.CODE
+ 00000000			Principal		PROC
+								; Obtener manejadores de entrada y salida
+								INVOKE	GetStdHandle, STDIN
+ 00000007  A3 0000007D R					MOV		ManejadorE, EAX
+								INVOKE	GetStdHandle, STDOUT
+ 00000013  A3 00000081 R					MOV		ManejadorS, EAX
+
+								; Ciclo para leer los 10 numeros
+ 00000018  B9 0000000A						MOV ECX, 10			; Contador del ciclo	
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Page 4 - 1
+
+
+ 0000001D  BE 00000000						MOV ESI, 0			; indice del vector, empieza en 0
+ 00000022			Inicio:			
+								; Guardar ECX
+ 00000022  51							PUSH ECX
+								
+								; Solicitar los datos de entrada A
+ 00000023  B8 0000001D						MOV		EAX, Long_ME01
+								INVOKE	WriteConsoleA, ManejadorS, ADDR MenEnt01, EAX, ADDR Caracter
+				es, 0
+								INVOKE	ReadConsoleA, ManejadorE, ADDR Texto, 13, ADDR Caracteres, 0
+				
+ 00000059  60		     1				PUSHAD
+ 0000005A  8D 35 00000089 R  1				LEA	ESI, Texto
+ 00000060  B8 00000000	     1				MOV	EAX, 0
+ 00000065  BB 0000000A	     1				MOV	EBX, 10
+ 0000006A  BF 00000000	     1				MOV	EDI, 0			; Positivo
+ 0000006F		     1	??0000:
+ 0000006F  80 3E 20	     1				CMP	BYTE PTR [ESI], 32	; Espacio en blanco
+ 00000072  74 05	     1				JE	??0001
+ 00000074  80 3E 09	     1				CMP	BYTE PTR [ESI], 9	; Tabulador
+ 00000077  75 03	     1				JNE	??0002
+ 00000079		     1	??0001:
+ 00000079  46		     1				INC	ESI
+ 0000007A  EB F3	     1				JMP	??0000
+ 0000007C		     1	??0002:
+ 0000007C  80 3E 2D	     1				CMP	BYTE PTR [ESI], '-'
+ 0000007F  75 06	     1				JNE	??0003
+ 00000081  BF 00000001	     1				MOV	EDI, 1			; Negativo
+ 00000086  46		     1				INC	ESI
+ 00000087		     1	??0003:
+ 00000087  80 3E 30	     1				CMP	BYTE PTR [ESI], '0'
+ 0000008A  72 11	     1				JB	??0004		; Si es menor que 0
+ 0000008C  80 3E 39	     1				CMP	BYTE PTR [ESI], '9'
+ 0000008F  77 0C	     1				JA	??0004		; Si es mayor que 0
+ 00000091  F7 E3	     1				MUL	EBX
+ 00000093  8A 16	     1				MOV	DL, [ESI]
+ 00000095  83 E2 0F	     1				AND	EDX, 0000000FH		; Convertir dígito a número
+ 00000098  03 C2	     1				ADD	EAX, EDX
+ 0000009A  46		     1				INC	ESI
+ 0000009B  EB EA	     1				JMP	??0003
+ 0000009D  83 FF 00	     1	??0004:		CMP	EDI, 0
+ 000000A0  74 02	     1				JE	??0005
+ 000000A2  F7 D8	     1				NEG	EAX
+ 000000A4  A3 00000028 R     1	??0005:			MOV	A, EAX
+ 000000A9  61		     1				POPAD
+								MacroCadenaAEntero	Texto, A
+
+ 000000AA  A1 00000028 R					; Almacenar el numero en el vector
+ 000000AF  89 86 00000000 R					MOV EAX, A
+								MOV Vector[ ESI ], EAX
+								
+ 000000B5  59							; Recuperar ECX
+								POP ECX
+
+ 000000B6  83 C6 04						; Actualizar indice y contador
+								ADD ESI, 4			; Porque el tipo de dato es DWORD ti
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Page 5 - 1
+
+
+				ene un tamaño de 4 y se incrementa de 4 en 4.
+								;Se le agregó esto 05 11  
+ 000000B9  49							; No se puede por la macro, no pudo saltar porque el destino fue may
+				or a 128 bits.
+ 000000BA  0F 85 FFFFFF62					DEC ECX
+								JNZ Inicio
+								;LOOP Inicio		No se pued utilizar el loop, entonces se uti
+				liza lo que se tenía antes.
+
+ 000000C0  B9 0000000A						; Ciclo para determinar si lo numeros son pares o impares
+ 000000C5  BE 00000000						MOV ECX, 10			; Contador del ciclo	
+								MOV ESI, 0			; indice del vector, empieza en 0
+ 000000CA  8D 1D 00000000 R					;Se le agregó esto 05 11
+ 000000D0							LEA EBX, Vector		; Obtener la dirección inicial del vector
+				Procesar:
+ 000000D0  F7 04 B3						; Editado
+	   00000001
+ 000000D7  74 0D						TEST DWORD PTR [ EBX + 4 * ESI ], 1	; Modo de direccionamiento b
+				ase + indece escalado...Es como un casteo, ahora va a tomar 4 bytes ya que el tamaño del lo que esta
+				mos utilizando es DWORD
+								JZ ContarPares
+ 000000D9  83 FA 00						; Si el residuo es 0 es par
+ 000000DC  74 08						CMP EDX, 0
+								JE ContarPares
+ 000000DE  FF 05 00000030 R					; Si no salta es impar
+ 000000E4  EB 06						INC Impares
+ 000000E6							JMP Continuar
+ 000000E6  FF 05 0000002C R	ContarPares:
+ 000000EC							INC Pares
+				Continuar:
+ 000000EC  46							; Actulizar indice y contador
+								INC ESI							; Incrementa
+				  en 1 el índicew
+ 000000ED  49							;ADD ESI, TYPE DWORD			; Incrementar el tamaño del 
+				tipo de dato 0711
+ 000000EE  75 E0						DEC	ECX
+								JNZ Procesar
+
+ 000000F0  B8 00000015		                ; Mostrar total de pares
+								MOV		EAX, Long_MS01
+								INVOKE	WriteConsoleA, ManejadorS, ADDR MenSal01, EAX, ADDR Caracter
+				es, 0
+ 0000010D  60		     1				PUSHAD				; Salvar todos los registros
+ 0000010E  8D 35 00000089 R  1				LEA	ESI, Texto
+ 00000114  C6 06 20	     1				MOV	BYTE PTR [ESI], ' '	; Positivo, no lleva signo
+ 00000117  A1 0000002C R     1				MOV	EAX, Pares
+ 0000011C  A9 80000000	     1				TEST	EAX, 80000000H
+ 00000121  74 05	     1				JZ	??0006
+ 00000123  C6 06 2D	     1				MOV	BYTE PTR [ESI], '-'
+ 00000126  F7 D8	     1				NEG	EAX
+ 00000128		     1	??0006:
+ 00000128  46		     1				INC	ESI			; Siguiente posición después del signo
+ 00000129  B9 00000000	     1				MOV	ECX, 0			; Contador de caracteres
+ 0000012E  BB 0000000A	     1				MOV	EBX, 10			; Dividir entre 10
+ 00000133		     1	??0007:
+ 00000133  41		     1				INC	ECX
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Page 6 - 1
+
+
+ 00000134  99		     1				CDQ				; EDX:EAX <- EAX
+ 00000135  F7 F3	     1				DIV	EBX
+ 00000137  52		     1				PUSH	EDX			; Residuo en la pila
+ 00000138  83 F8 00	     1				CMP	EAX, 0			; ¿Seguir dividiendo?
+ 0000013B  75 F6	     1				JNE	??0007
+ 0000013D  89 0D 00000085 R  1				MOV	Caracteres, ECX
+ 00000143  FF 05 00000085 R  1				INC	Caracteres		; Por el signo
+ 00000149		     1	??0008:
+ 00000149  5A		     1				POP	EDX
+ 0000014A  80 CA 30	     1				OR	DL, 30H			; Convertir caractera a ASCII
+ 0000014D  88 16	     1				MOV	[ESI], DL
+ 0000014F  46		     1				INC	ESI
+ 00000150  E2 F7	     1				LOOP	??0008
+ 00000152  61		     1				POPAD				; Recuperar todos los registros
+								MacroEnteroACadena	Pares, Texto, Caracteres
+								INVOKE	WriteConsoleA, ManejadorS, ADDR Texto, Caracteres, ADDR Cara
+				cteres, 0
+
+								; Salto de linea
+								INVOKE	WriteConsoleA, ManejadorS, ADDR SaltoLinea, 2, ADDR Caracter
+				es, 0
+				               
+ 00000189  B8 00000017					    ; Mostrar total de impares
+								MOV		EAX, Long_MS02
+								INVOKE	WriteConsoleA, ManejadorS, ADDR MenSal02, EAX, ADDR Caracter
+				es, 0
+ 000001A6  60		     1				PUSHAD				; Salvar todos los registros
+ 000001A7  8D 35 00000089 R  1				LEA	ESI, Texto
+ 000001AD  C6 06 20	     1				MOV	BYTE PTR [ESI], ' '	; Positivo, no lleva signo
+ 000001B0  A1 00000030 R     1				MOV	EAX, Impares
+ 000001B5  A9 80000000	     1				TEST	EAX, 80000000H
+ 000001BA  74 05	     1				JZ	??0009
+ 000001BC  C6 06 2D	     1				MOV	BYTE PTR [ESI], '-'
+ 000001BF  F7 D8	     1				NEG	EAX
+ 000001C1		     1	??0009:
+ 000001C1  46		     1				INC	ESI			; Siguiente posición después del signo
+ 000001C2  B9 00000000	     1				MOV	ECX, 0			; Contador de caracteres
+ 000001C7  BB 0000000A	     1				MOV	EBX, 10			; Dividir entre 10
+ 000001CC		     1	??000A:
+ 000001CC  41		     1				INC	ECX
+ 000001CD  99		     1				CDQ				; EDX:EAX <- EAX
+ 000001CE  F7 F3	     1				DIV	EBX
+ 000001D0  52		     1				PUSH	EDX			; Residuo en la pila
+ 000001D1  83 F8 00	     1				CMP	EAX, 0			; ¿Seguir dividiendo?
+ 000001D4  75 F6	     1				JNE	??000A
+ 000001D6  89 0D 00000085 R  1				MOV	Caracteres, ECX
+ 000001DC  FF 05 00000085 R  1				INC	Caracteres		; Por el signo
+ 000001E2		     1	??000B:
+ 000001E2  5A		     1				POP	EDX
+ 000001E3  80 CA 30	     1				OR	DL, 30H			; Convertir caractera a ASCII
+ 000001E6  88 16	     1				MOV	[ESI], DL
+ 000001E8  46		     1				INC	ESI
+ 000001E9  E2 F7	     1				LOOP	??000B
+ 000001EB  61		     1				POPAD				; Recuperar todos los registros
+								MacroEnteroACadena	Impares, Texto, Caracteres
+								INVOKE	WriteConsoleA, ManejadorS, ADDR Texto, Caracteres, ADDR Cara
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Page 7 - 1
+
+
+				cteres, 0
+
+								; Salto de linea
+								INVOKE	WriteConsoleA, ManejadorS, ADDR SaltoLinea, 2, ADDR Caracter
+				es, 0
+				              
+								; Salir al S. O.
+ 00000229							INVOKE	ExitProcess, 0
+				Principal		ENDP
+								END		Principal
+
+
+
+
+
+
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Symbols 8 - 1
+
+
+
+
+Macros:
+
+                N a m e                 Type
+
+MacroCadenaAEntero . . . . . . .	Proc
+MacroEnteroACadena . . . . . . .	Proc
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Symbols 9 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00000400 Para	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000098 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000229 Para	  Public  'CODE'	
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Symbols 10 - 1
+
+
+
+
+Procedures, parameters, and locals:
+
+                N a m e                 Type     Value    Attr
+
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Principal  . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000229 Public STDCALL
+  Inicio . . . . . . . . . . . .	L Near	 00000022 _TEXT	
+  ??0000 . . . . . . . . . . . .	L Near	 0000006F _TEXT	
+  ??0001 . . . . . . . . . . . .	L Near	 00000079 _TEXT	
+  ??0002 . . . . . . . . . . . .	L Near	 0000007C _TEXT	
+  ??0003 . . . . . . . . . . . .	L Near	 00000087 _TEXT	
+  ??0004 . . . . . . . . . . . .	L Near	 0000009D _TEXT	
+  ??0005 . . . . . . . . . . . .	L Near	 000000A4 _TEXT	
+  Procesar . . . . . . . . . . .	L Near	 000000D0 _TEXT	
+  ContarPares  . . . . . . . . .	L Near	 000000E6 _TEXT	
+  Continuar  . . . . . . . . . .	L Near	 000000EC _TEXT	
+  ??0006 . . . . . . . . . . . .	L Near	 00000128 _TEXT	
+  ??0007 . . . . . . . . . . . .	L Near	 00000133 _TEXT	
+  ??0008 . . . . . . . . . . . .	L Near	 00000149 _TEXT	
+  ??0009 . . . . . . . . . . . .	L Near	 000001C1 _TEXT	
+  ??000A . . . . . . . . . . . .	L Near	 000001CC _TEXT	
+  ??000B . . . . . . . . . . . .	L Near	 000001E2 _TEXT	
+ReadConsoleA . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleA  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/07/19 07:40:32
+<Programa para evaluar numeros pares o impares dentro de un   Symbols 11 - 1
+
+
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000003h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+A  . . . . . . . . . . . . . . .	DWord	 00000028 _DATA	
+Caracteres . . . . . . . . . . .	DWord	 00000085 _DATA	
+Impares  . . . . . . . . . . . .	DWord	 00000030 _DATA	
+Long_ME01  . . . . . . . . . . .	Number	 0000001Dh   
+Long_MS01  . . . . . . . . . . .	Number	 00000015h   
+Long_MS02  . . . . . . . . . . .	Number	 00000017h   
+ManejadorE . . . . . . . . . . .	DWord	 0000007D _DATA	
+ManejadorS . . . . . . . . . . .	DWord	 00000081 _DATA	
+MenEnt01 . . . . . . . . . . . .	Byte	 00000034 _DATA	
+MenSal01 . . . . . . . . . . . .	Byte	 00000051 _DATA	
+MenSal02 . . . . . . . . . . . .	Byte	 00000066 _DATA	
+Pares  . . . . . . . . . . . . .	DWord	 0000002C _DATA	
+STDIN  . . . . . . . . . . . . .	Number	 -0000000Ah   
+STDOUT . . . . . . . . . . . . .	Number	 -0000000Bh   
+SaltoLinea . . . . . . . . . . .	Byte	 00000096 _DATA	
+Texto  . . . . . . . . . . . . .	Byte	 00000089 _DATA	
+Vector . . . . . . . . . . . . .	DWord	 00000000 _DATA	
+
+	   0 Warnings
+	   0 Errors
