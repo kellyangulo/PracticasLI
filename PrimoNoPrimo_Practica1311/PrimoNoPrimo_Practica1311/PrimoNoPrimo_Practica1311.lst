@@ -1,0 +1,368 @@
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/13/19 14:46:24
+9Programa para determinar si un numero es primo o no prim    Page 1 - 1
+
+
+				;EUP que lea el número por el teclado y determine si es primo no primo
+
+				TITLE	Programa para determinar si un numero es primo o no primo
+								PAGE	60, 132
+
+								.586
+								.MODEL	FLAT, STDCALL
+
+				Include	<Macros.inc>
+			      C ; Macros.inc
+			      C ; Contiene las macros para convertir enteros a cadena y viceversa
+			      C 
+			      C ; MacroEnteroACadena
+			      C ; Esta macro convierte un entero de 32 bits con signo
+			      C ; en su representación en cadena para su impresión posterior
+			      C ; usando la función WriteConsoleA
+			      C 
+			      C 
+			      C MacroEnteroACadena	MACRO	Numero, Cadena, Contador
+			      C LOCAL	Inicio
+			      C LOCAL	Repetir
+			      C LOCAL	Sacar
+			      C 			PUSHAD				; Salvar todos los registros
+			      C 			LEA	ESI, Cadena
+			      C 			MOV	BYTE PTR [ESI], ' '	; Positivo, no lleva signo
+			      C 			MOV	EAX, Numero
+			      C 			TEST	EAX, 80000000H
+			      C 			JZ	Inicio
+			      C 			; Numero negativo
+			      C 			; Poner signo e invertir
+			      C 			MOV	BYTE PTR [ESI], '-'
+			      C 			NEG	EAX
+			      C 
+			      C Inicio:
+			      C 			INC	ESI			; Siguiente posición después del signo
+			      C 			MOV	ECX, 0			; Contador de caracteres
+			      C 			MOV	EBX, 10			; Dividir entre 10
+			      C 
+			      C Repetir:
+			      C 			INC	ECX
+			      C 			CDQ				; EDX:EAX <- EAX
+			      C 			DIV	EBX
+			      C 			PUSH	EDX			; Residuo en la pila
+			      C 			CMP	EAX, 0			; ¿Seguir dividiendo?
+			      C 			JNE	Repetir
+			      C 
+			      C 			; ECX tiene el total de caracteres
+			      C 			MOV	Contador, ECX
+			      C 			INC	Contador		; Por el signo
+			      C 
+			      C 			; Sacar los residuos de la pila y convertirlos en caracteres
+			      C Sacar:
+			      C 			POP	EDX
+			      C 			OR	DL, 30H			; Convertir caractera a ASCII
+			      C 			MOV	[ESI], DL
+			      C 			INC	ESI
+			      C 			LOOP	Sacar
+			      C 
+			      C 			; Fin. Cadena tiene el número y Contador el total de caracteres
+			      C 			POPAD				; Recuperar todos los registros
+			      C 			ENDM
+			      C 
+			      C 
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/13/19 14:46:24
+9Programa para determinar si un numero es primo o no prim    Page 2 - 1
+
+
+			      C MacroCadenaAEntero	MACRO	Cadena, Numero
+			      C LOCAL Saltar
+			      C LOCAL SiguienteEspacio
+			      C LOCAL VerificarSigno
+			      C LOCAL Empezar
+			      C LOCAL Terminar
+			      C LOCAL Salir
+			      C 			PUSHAD
+			      C 
+			      C 			LEA	ESI, Cadena
+			      C 			MOV	EAX, 0
+			      C 			MOV	EBX, 10
+			      C 			MOV	EDI, 0			; Positivo
+			      C 
+			      C 			;Saltar blancos y tabuladores
+			      C Saltar:
+			      C 			CMP	BYTE PTR [ESI], 32	; Espacio en blanco
+			      C 			JE	SiguienteEspacio
+			      C 			CMP	BYTE PTR [ESI], 9	; Tabulador
+			      C 			JNE	VerificarSigno
+			      C SiguienteEspacio:
+			      C 			INC	ESI
+			      C 			JMP	Saltar
+			      C 
+			      C 			;El signo solo puede ser el primer caracter
+			      C VerificarSigno:
+			      C 			CMP	BYTE PTR [ESI], '-'
+			      C 			JNE	Empezar
+			      C 			MOV	EDI, 1			; Negativo
+			      C 			INC	ESI
+			      C 
+			      C 			; Convertir dígitos a números
+			      C 			; Salir cuando no sea dígito
+			      C Empezar:
+			      C 			CMP	BYTE PTR [ESI], '0'
+			      C 			JB	Terminar		; Si es menor que 0
+			      C 			CMP	BYTE PTR [ESI], '9'
+			      C 			JA	Terminar		; Si es mayor que 0
+			      C 			MUL	EBX
+			      C 			MOV	DL, [ESI]
+			      C 			AND	EDX, 0000000FH		; Convertir dígito a número
+			      C 			ADD	EAX, EDX
+			      C 			INC	ESI
+			      C 			JMP	Empezar
+			      C 
+			      C 			; Si tenía signo, negar el número
+			      C Terminar:		CMP	EDI, 0
+			      C 			JE	Salir
+			      C 			NEG	EAX
+			      C 
+			      C 			; Dejarlo en número
+			      C Salir:			MOV	Numero, EAX
+			      C 			POPAD
+			      C 			ENDM
+			      C 
+
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/13/19 14:46:24
+9Programa para determinar si un numero es primo o no prim    Page 3 - 1
+
+
+				; Prototipos de llamadas a servicios del sistema operativo
+
+				GetStdHandle	PROTO	:DWORD
+				ReadConsoleA	PROTO	:DWORD,	:DWORD,	:DWORD,	:DWORD,	:DWORD
+				WriteConsoleA	PROTO	:DWORD,	:DWORD,	:DWORD,	:DWORD,	:DWORD
+				ExitProcess		PROTO	CodigoSalida:DWORD
+
+								.STACK
+ 00000000							.DATA
+ 00000000 00000000		Numero			DWORD	0
+ 00000004 00000000		Contador		DWORD	0
+ 00000008 50 72 6F 70 6F	MenEnt01		BYTE	"Proporcione un numero entero positivo "
+	   72 63 69 6F 6E
+	   65 20 75 6E 20
+	   6E 75 6D 65 72
+	   6F 20 65 6E 74
+	   65 72 6F 20 70
+	   6F 73 69 74 69
+	   76 6F 20
+ 0000002E = 00000026		Long_ME01		EQU		$ - MenEnt01
+
+ 0000002E 45 6C 20 6E 75	MenSal01		BYTE	"El numero es primo."
+	   6D 65 72 6F 20
+	   65 73 20 70 72
+	   69 6D 6F 2E
+ 00000041 = 00000013		Long_MS01		EQU		$ - MenSal01
+ 00000041 45 6C 20 6E 75	MenSal02		BYTE	"El numero NO es primo."
+	   6D 65 72 6F 20
+	   4E 4F 20 65 73
+	   20 70 72 69 6D
+	   6F 2E
+ 00000057 = 00000016		Long_MS02		EQU		$ - MenSal02
+
+				; Variables para las llamadas al sistema operativo
+ 00000057 00000000		ManejadorE		DWORD	0
+ 0000005B 00000000		ManejadorS		DWORD	0
+ 0000005F 00000000		Caracteres		DWORD	0
+ 00000063  0000000D [		Texto			BYTE	13 DUP ( ' ' )
+	    20
+	   ]
+ 00000070 0D 0A			SaltoLinea		BYTE	13, 10
+ =-0000000A			STDIN			EQU		-10
+ =-0000000B			STDOUT			EQU		-11
+
+ 00000000							.CODE
+ 00000000			Principal		PROC
+								; Obtener manejadores de entrada y salida
+								INVOKE	GetStdHandle, STDIN
+ 00000007  A3 00000057 R					MOV		ManejadorE, EAX
+								INVOKE	GetStdHandle, STDOUT
+ 00000013  A3 0000005B R					MOV		ManejadorS, EAX
+								
+								; Solicitar los datos de entrada Numero
+ 00000018  B8 00000026						MOV		EAX, Long_ME01
+								INVOKE	WriteConsoleA, ManejadorS, ADDR MenEnt01, EAX, ADDR Caracter
+				es, 0
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/13/19 14:46:24
+9Programa para determinar si un numero es primo o no prim    Page 4 - 1
+
+
+								INVOKE	ReadConsoleA, ManejadorE, ADDR Texto, 13, ADDR Caracteres, 0
+				
+ 0000004E  60		     1				PUSHAD
+ 0000004F  8D 35 00000063 R  1				LEA	ESI, Texto
+ 00000055  B8 00000000	     1				MOV	EAX, 0
+ 0000005A  BB 0000000A	     1				MOV	EBX, 10
+ 0000005F  BF 00000000	     1				MOV	EDI, 0			; Positivo
+ 00000064		     1	??0000:
+ 00000064  80 3E 20	     1				CMP	BYTE PTR [ESI], 32	; Espacio en blanco
+ 00000067  74 05	     1				JE	??0001
+ 00000069  80 3E 09	     1				CMP	BYTE PTR [ESI], 9	; Tabulador
+ 0000006C  75 03	     1				JNE	??0002
+ 0000006E		     1	??0001:
+ 0000006E  46		     1				INC	ESI
+ 0000006F  EB F3	     1				JMP	??0000
+ 00000071		     1	??0002:
+ 00000071  80 3E 2D	     1				CMP	BYTE PTR [ESI], '-'
+ 00000074  75 06	     1				JNE	??0003
+ 00000076  BF 00000001	     1				MOV	EDI, 1			; Negativo
+ 0000007B  46		     1				INC	ESI
+ 0000007C		     1	??0003:
+ 0000007C  80 3E 30	     1				CMP	BYTE PTR [ESI], '0'
+ 0000007F  72 11	     1				JB	??0004		; Si es menor que 0
+ 00000081  80 3E 39	     1				CMP	BYTE PTR [ESI], '9'
+ 00000084  77 0C	     1				JA	??0004		; Si es mayor que 0
+ 00000086  F7 E3	     1				MUL	EBX
+ 00000088  8A 16	     1				MOV	DL, [ESI]
+ 0000008A  83 E2 0F	     1				AND	EDX, 0000000FH		; Convertir dígito a número
+ 0000008D  03 C2	     1				ADD	EAX, EDX
+ 0000008F  46		     1				INC	ESI
+ 00000090  EB EA	     1				JMP	??0003
+ 00000092  83 FF 00	     1	??0004:		CMP	EDI, 0
+ 00000095  74 02	     1				JE	??0005
+ 00000097  F7 D8	     1				NEG	EAX
+ 00000099  A3 00000000 R     1	??0005:			MOV	Numero, EAX
+ 0000009E  61		     1				POPAD
+								MacroCadenaAEntero	Texto, Numero
+
+ 0000009F  8B 0D 00000000 R					;Ciclo para las divisiones y contar cuantas veces es divisible
+ 000000A5							MOV		ECX, Numero
+ 000000A5  A1 00000000 R	Ciclo:
+ 000000AA  99							MOV		EAX, Numero
+ 000000AB  F7 F1						CDQ 					;Mueve al número EAX -> EDX:
+				EAX lo hace de 64 bits
+								DIV		ECX
+
+ 000000AD  83 FA 00						;Preguntar si el residuo es 0
+ 000000B0  75 06						CMP		EDX, 0
+								JNE		NoContar
+
+ 000000B2  FF 05 00000004 R					;Si no salta es igual a 0 (divisible) Incrementa el contador
+								INC Contador
+ 000000B8
+ 000000B8  E2 EB		NoContar:
+								LOOP	Ciclo
+
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/13/19 14:46:24
+9Programa para determinar si un numero es primo o no prim    Page 5 - 1
+
+
+ 000000BA  83 3D 00000004 R					;Preguntar por el resultado de contador]
+	   02
+ 000000C1  75 1F						CMP		Contador, 2
+								JNE ImprimirNoPrimo
+
+ 000000C3  B8 00000013						;Si no salta es primo
+								MOV		EAX, Long_MS01
+ 000000E0  EB 1D						INVOKE	WriteConsoleA, ManejadorS, ADDR MenSal01, EAX, ADDR Caracter
+				es, 0
+								JMP	 Salir
+ 000000E2
+ 000000E2  B8 00000016		ImprimirNoPrimo:
+								MOV		EAX, Long_MS02
+								INVOKE	WriteConsoleA, ManejadorS, ADDR MenSal02, EAX, ADDR Caracter
+				es, 0
+ 000000FF
+				Salir:
+								; Salto de linea
+								INVOKE	WriteConsoleA, ManejadorS, ADDR SaltoLinea, 2, ADDR Caracter
+				es, 0
+				    
+							   ; Salir al S. O.
+ 0000011F							INVOKE	ExitProcess, 0
+				Principal		ENDP
+								END		Principal
+
+
+
+
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/13/19 14:46:24
+9Programa para determinar si un numero es primo o no prim    Symbols 6 - 1
+
+
+
+
+Macros:
+
+                N a m e                 Type
+
+MacroCadenaAEntero . . . . . . .	Proc
+MacroEnteroACadena . . . . . . .	Proc
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/13/19 14:46:24
+9Programa para determinar si un numero es primo o no prim    Symbols 7 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00000400 Para	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000072 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000011F Para	  Public  'CODE'	
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/13/19 14:46:24
+9Programa para determinar si un numero es primo o no prim    Symbols 8 - 1
+
+
+
+
+Procedures, parameters, and locals:
+
+                N a m e                 Type     Value    Attr
+
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Principal  . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000011F Public STDCALL
+  ??0000 . . . . . . . . . . . .	L Near	 00000064 _TEXT	
+  ??0001 . . . . . . . . . . . .	L Near	 0000006E _TEXT	
+  ??0002 . . . . . . . . . . . .	L Near	 00000071 _TEXT	
+  ??0003 . . . . . . . . . . . .	L Near	 0000007C _TEXT	
+  ??0004 . . . . . . . . . . . .	L Near	 00000092 _TEXT	
+  ??0005 . . . . . . . . . . . .	L Near	 00000099 _TEXT	
+  Ciclo  . . . . . . . . . . . .	L Near	 000000A5 _TEXT	
+  NoContar . . . . . . . . . . .	L Near	 000000B8 _TEXT	
+  ImprimirNoPrimo  . . . . . . .	L Near	 000000E2 _TEXT	
+  Salir  . . . . . . . . . . . .	L Near	 000000FF _TEXT	
+ReadConsoleA . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleA  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Microsoft (R) Macro Assembler Version 14.23.28105.4	    11/13/19 14:46:24
+9Programa para determinar si un numero es primo o no prim    Symbols 9 - 1
+
+
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000003h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+Caracteres . . . . . . . . . . .	DWord	 0000005F _DATA	
+Contador . . . . . . . . . . . .	DWord	 00000004 _DATA	
+Long_ME01  . . . . . . . . . . .	Number	 00000026h   
+Long_MS01  . . . . . . . . . . .	Number	 00000013h   
+Long_MS02  . . . . . . . . . . .	Number	 00000016h   
+ManejadorE . . . . . . . . . . .	DWord	 00000057 _DATA	
+ManejadorS . . . . . . . . . . .	DWord	 0000005B _DATA	
+MenEnt01 . . . . . . . . . . . .	Byte	 00000008 _DATA	
+MenSal01 . . . . . . . . . . . .	Byte	 0000002E _DATA	
+MenSal02 . . . . . . . . . . . .	Byte	 00000041 _DATA	
+Numero . . . . . . . . . . . . .	DWord	 00000000 _DATA	
+STDIN  . . . . . . . . . . . . .	Number	 -0000000Ah   
+STDOUT . . . . . . . . . . . . .	Number	 -0000000Bh   
+SaltoLinea . . . . . . . . . . .	Byte	 00000070 _DATA	
+Texto  . . . . . . . . . . . . .	Byte	 00000063 _DATA	
+
+	   0 Warnings
+	   0 Errors
